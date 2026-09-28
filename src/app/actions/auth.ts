@@ -5,6 +5,7 @@ import { z } from "zod";
 import { verifyPassword } from "@/lib/auth/password";
 import { clearSessionCookie, createSessionToken, setSessionCookie } from "@/lib/auth/session";
 import { getStore } from "@/lib/db";
+import { rateLimit } from "@/lib/rate-limit";
 import { loginSchema } from "@/lib/validation/auth";
 
 /**
@@ -58,6 +59,17 @@ export async function loginAction(
   }
 
   const { email, password } = parsed.data;
+
+  // Brute-force guard: 10 attempts per email per 10-minute window
+  // (in-memory, per-instance — see src/lib/rate-limit.ts).
+  const limit = rateLimit(`login:${email.toLowerCase()}`, 10, 10 * 60 * 1000);
+  if (!limit.ok) {
+    const minutes = Math.max(1, Math.ceil(limit.retryAfterSec / 60));
+    return {
+      error: `Too many attempts - try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+    };
+  }
+
   const store = await getStore();
   const user = await store.getUserByEmail(email);
   if (

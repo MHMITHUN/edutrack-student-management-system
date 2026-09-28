@@ -21,7 +21,7 @@ authorization decision next to the data it protects.
 | Capability                                  | ADMIN | TEACHER | STUDENT |
 | ------------------------------------------- | :---: | :-----: | :-----: |
 | View own role dashboard/analytics           | ✓     | ✓       | ✓       |
-| User management (create, enable/disable)    | ✓     |         |         |
+| User accounts (enable/disable only)         | ✓     |         |         |
 | Class / subject / teacher directories       | ✓     | view    |         |
 | Marks entry (draft, submit) for **assigned** class+subject | | ✓ | |
 | Marks entry for any other class+subject     |       | ✗       |         |

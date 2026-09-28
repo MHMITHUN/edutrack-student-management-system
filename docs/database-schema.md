@@ -270,7 +270,7 @@ with pagination (20/page) and filters by actor role (resolved against
 
 Action vocabulary: `marksheet.save`, `marksheet.submit`,
 `marksheet.publish`, `marksheet.return`, `attendance.save`, `notice.create`,
-`settings.update`, `user.create`, `user.update`.
+`settings.update`, `user.update`.
 
 ---
 

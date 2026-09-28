@@ -5,6 +5,7 @@ import {
   verifySessionToken,
 } from "@/lib/auth/session";
 import { getStore, resetStoreForTests, type Store } from "@/lib/db";
+import { resetRateLimitsForTests } from "@/lib/rate-limit";
 
 /**
  * loginAction unit tests: validation, the single generic failure message
@@ -51,6 +52,7 @@ let store: Store;
 beforeEach(async () => {
   process.env.SESSION_SECRET = "login-test-secret";
   resetStoreForTests();
+  resetRateLimitsForTests();
   delete process.env.MONGODB_URI;
   harness.clear();
   redirectLog.urls.length = 0;
@@ -112,6 +114,45 @@ describe("loginAction — failed sign-ins", () => {
     // No session cookie was set and no redirect happened.
     expect(harness.jar.has(SESSION_COOKIE)).toBe(false);
     expect(redirectLog.urls).toEqual([]);
+  });
+});
+
+describe("loginAction — brute-force guard", () => {
+  it("refuses even correct credentials once the per-email limit is hit", async () => {
+    // 10 failed attempts exhaust the 10-per-10-minutes window ...
+    for (let i = 0; i < 10; i += 1) {
+      const state = await loginAction(
+        {},
+        loginFormData("teacher@demo.local", "Wrong@12345"),
+      );
+      expect(state).toEqual({ error: "Incorrect email or password." });
+    }
+
+    // ... so the 11th attempt is refused with a generic message before the
+    // credential check, even with the correct password.
+    const state = await loginAction(
+      {},
+      loginFormData("teacher@demo.local", "Demo@12345"),
+    );
+    expect(state.error).toMatch(
+      /^Too many attempts - try again in \d+ minutes?\.$/,
+    );
+    expect(state.fieldErrors).toBeUndefined();
+
+    // Nothing was signed in: no cookie, no redirect.
+    expect(harness.jar.has(SESSION_COOKIE)).toBe(false);
+    expect(redirectLog.urls).toEqual([]);
+  });
+
+  it("counts attempts per email — another account is unaffected", async () => {
+    for (let i = 0; i < 10; i += 1) {
+      await loginAction({}, loginFormData("nobody@demo.local", "Wrong@12345"));
+    }
+    const state = await loginAction(
+      {},
+      loginFormData("admin@demo.local", "Wrong@12345"),
+    );
+    expect(state).toEqual({ error: "Incorrect email or password." });
   });
 });
 

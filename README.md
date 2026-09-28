@@ -77,12 +77,14 @@ end.
   table, GPA, issue date and a deterministic verification ID, with a print
   stylesheet (`@media print`).
 - **Audit log:** every mutation (mark sheet save/submit/publish/return,
-  attendance save, notice create, settings update, user create/update) writes
-  an audit row; the admin page filters by actor role, action and date range.
+  attendance save, notice publish, user status change, settings update)
+  writes an audit row; the admin page filters by actor role, action and date
+  range.
 - **CSV export:** students, published results and attendance (guarded API
   routes; teachers can only export their own classes).
-- **User management:** admins create users and enable/disable accounts
-  (disabled accounts cannot sign in; self-disable is blocked).
+- **User accounts:** admins enable/disable accounts (disabled accounts cannot
+  sign in; self-disable is blocked). There is no account-creation feature —
+  the seeded demo users cover the roles.
 
 ## Technology Stack
 
@@ -172,9 +174,9 @@ All IDs are human-readable strings (`stu-031`, `cls-10-science`, `ms-016`).
 
 Three roles, enforced server-side everywhere (the client is never trusted):
 
-- **ADMIN** — user management, class/subject/teacher directories, marks
-  review + publish, school-wide notices, settings (grade bands), audit log,
-  all CSV exports.
+- **ADMIN** — user account enable/disable, class/subject/teacher directories,
+  marks review + publish, school-wide notices, settings (grade bands), audit
+  log, all CSV exports.
 - **TEACHER** — only *their assigned* class+subject: marks entry
   (draft/submit), attendance for their classes, class notices, their
   dashboard with alerts.
@@ -202,12 +204,13 @@ Capability matrix with per-route enforcement:
 
 ## Testing
 
-- **Unit (Vitest, 15 files / 183 tests):** grading engine (bands, fail-cap,
+- **Unit (Vitest, 16 files / 189 tests):** grading engine (bands, fail-cap,
   absent handling), marks workflow state machine + assignment enforcement,
   attendance analytics, notices visibility rules, settings auditing, CSV
   escaping, auth password hashing, session tokens (roundtrip, tamper,
   expiry, schema), login action (validation, disabled account blocked,
-  cookie + redirect targets), role guards (`apiGuard` 401/403 responses,
+  brute-force rate limit, cookie + redirect targets), login rate limiting
+  (fixed window), role guards (`apiGuard` 401/403 responses,
   page-guard redirects), enrollment integrity (own-class sheets only,
   entries ⊆ roster, exact demo GPA) and store behavior for both store
   families' shared contract.
@@ -289,6 +292,11 @@ appear.
 
 - **Demo store resets.** Without `MONGODB_URI` all data is in-memory and
   disappears on restart/redeploy; the demo banner says so on every page.
+- **Login rate limiting is in-memory and per-instance.** The brute-force
+  guard on sign-in is a fixed-window counter (10 attempts per email per
+  10 minutes) held in server memory: it survives dev HMR but resets on
+  restart, and each serverless instance counts separately — acceptable for
+  fictional demo accounts, but not a shared store like Redis.
 - **Verification ID is a demo lookup key, not cryptography.** It is a
   deterministic SHA-256-derived hash of student+exam+year for spotting typos
   when comparing two printouts — not an anti-forgery seal.
