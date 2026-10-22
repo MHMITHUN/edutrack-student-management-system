@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { DemoBanner } from "@/components/layout/DemoBanner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,7 +25,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <body className="flex min-h-screen flex-col">
-        <DemoBanner />
         {children}
       </body>
     </html>
